@@ -22,14 +22,25 @@
 
 #import "AFHTTPRequestOperationLogger.h"
 #import "AFHTTPRequestOperation.h"
-#import "DDLog.h"
+#import "AFHTTPRequestLumberjackLogger.h"
 
 #if ! __has_feature(objc_arc)
 #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
 #endif
 
+static int httpLogLevel = LOG_LEVEL_INFO;
+
 @implementation AFHTTPRequestOperationLogger
-@synthesize level = _level;
+
++ (int)ddLogLevel
+{
+    return ddLogLevel;
+}
+
++ (void)ddSetLogLevel:(int)logLevel
+{
+    httpLogLevel = logLevel;
+}
 
 + (AFHTTPRequestOperationLogger *)sharedLogger {
     static AFHTTPRequestOperationLogger *_sharedLogger = nil;
@@ -42,16 +53,6 @@
   return _sharedLogger;
 }
 
-- (id)init {
-    self = [super init];
-    if (!self) {
-        return nil;
-    }
-
-    self.level = AFLoggerLevelInfo;
-
-    return self;
-}
 
 - (void)dealloc {
   [self stopLogging];
@@ -68,58 +69,34 @@
 
 #pragma mark - NSNotification
 
-- (void)HTTPOperationDidStart:(NSNotification *)notification {
-  AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
+- (void)HTTPOperationDidStart:(NSNotification *)notification {	
+	AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
 
-    if (![operation isKindOfClass:[AFHTTPRequestOperation class]]) {
+	if (![operation isKindOfClass:[AFHTTPRequestOperation class]]) {
         return;
     }
 
-  NSString *body = nil;
-  if ([operation.request HTTPBody]) {
-    body = [NSString stringWithUTF8String:[[operation.request HTTPBody] bytes]];
-  }
-
-  switch (self.level) {
-    case AFLoggerLevelDebug:
-      DDLogVerbose(@"%@ '%@': %@ %@", [operation.request HTTPMethod], [[operation.request URL] absoluteString], [operation.request allHTTPHeaderFields], body);
-      break;
-    case AFLoggerLevelInfo:
-      DDLogInfo(@"%@ '%@'", [operation.request HTTPMethod], [[operation.request URL] absoluteString]);
-      break;
-        default:
-            break;
-  }
+	NSString *body = nil;
+	if ([operation.request HTTPBody]) {
+		body = [NSString stringWithUTF8String:[[operation.request HTTPBody] bytes]];
+	}
+	
+	HTTPLogInfo(@"%@ '%@'", [operation.request HTTPMethod], [[operation.request URL] absoluteString]);
+	HTTPLogVerbose(@"\tHeader Fields: %@\n\tBody: %@", [operation.request allHTTPHeaderFields], body);
 }
 
 - (void)HTTPOperationDidFinish:(NSNotification *)notification {
-  AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
+	AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
 
     if (![operation isKindOfClass:[AFHTTPRequestOperation class]]) {
         return;
     }
 
     if (operation.error) {
-        switch (self.level) {
-            case AFLoggerLevelDebug:
-            case AFLoggerLevelInfo:
-            case AFLoggerLevelWarn:
-            case AFLoggerLevelError:
-                DDLogError(@"%@ '%@' (%ld): %@", [operation.request HTTPMethod], [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
-            default:
-                break;
-        }
+		HTTPLogError(@"Response: %@ '%@' (%ld): %@", [operation.request HTTPMethod], [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
     } else {
-        switch (self.level) {
-            case AFLoggerLevelDebug:
-                DDLogCVerbose(@"%ld '%@': %@", (long)[operation.response statusCode], [[operation.response URL] absoluteString], operation.responseString);
-                break;
-            case AFLoggerLevelInfo:
-                DDLogInfo(@"%ld '%@'", (long)[operation.response statusCode], [[operation.response URL] absoluteString]);
-                break;
-            default:
-                break;
-        }
+		HTTPLogInfo(@"%ld '%@'", (long)[operation.response statusCode], [[operation.response URL] absoluteString]);
+		HTTPLogVerbose(@"\tResponse: %@", operation.responseString);
     }
 }
 

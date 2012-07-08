@@ -22,21 +22,8 @@
 
 #import <Foundation/Foundation.h>
 
-typedef enum {
-  AFLoggerLevelOff,
-  AFLoggerLevelDebug,
-  AFLoggerLevelInfo,
-  AFLoggerLevelWarn,
-  AFLoggerLevelError,
-  AFLoggerLevelFatal = AFLoggerLevelOff,
-} AFHTTPRequestLoggerLevel;
-
 @interface AFHTTPRequestOperationLogger : NSObject {
-@private
-	AFHTTPRequestLoggerLevel _level;
 }
-
-@property (nonatomic, assign) AFHTTPRequestLoggerLevel level;
 
 + (AFHTTPRequestOperationLogger *)sharedLogger;
 
