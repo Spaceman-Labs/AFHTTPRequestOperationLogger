@@ -22,6 +22,11 @@
 
 #import "AFHTTPRequestOperationLogger.h"
 #import "AFHTTPRequestOperation.h"
+#import "DDLog.h"
+
+#if ! __has_feature(objc_arc)
+#warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
+#endif
 
 @implementation AFHTTPRequestOperationLogger
 @synthesize level = _level;
@@ -50,8 +55,6 @@
 
 - (void)dealloc {
   [self stopLogging];
-
-  [super dealloc];
 }
 
 - (void)startLogging {
@@ -79,10 +82,10 @@
 
   switch (self.level) {
     case AFLoggerLevelDebug:
-      NSLog(@"%@ '%@': %@ %@", [operation.request HTTPMethod], [[operation.request URL] absoluteString], [operation.request allHTTPHeaderFields], body);
+      DDLogVerbose(@"%@ '%@': %@ %@", [operation.request HTTPMethod], [[operation.request URL] absoluteString], [operation.request allHTTPHeaderFields], body);
       break;
     case AFLoggerLevelInfo:
-      NSLog(@"%@ '%@'", [operation.request HTTPMethod], [[operation.request URL] absoluteString]);
+      DDLogInfo(@"%@ '%@'", [operation.request HTTPMethod], [[operation.request URL] absoluteString]);
       break;
         default:
             break;
@@ -102,17 +105,17 @@
             case AFLoggerLevelInfo:
             case AFLoggerLevelWarn:
             case AFLoggerLevelError:
-                NSLog(@"[Error] %@ '%@' (%ld): %@", [operation.request HTTPMethod], [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
+                DDLogError(@"%@ '%@' (%ld): %@", [operation.request HTTPMethod], [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
             default:
                 break;
         }
     } else {
         switch (self.level) {
             case AFLoggerLevelDebug:
-                NSLog(@"%ld '%@': %@", (long)[operation.response statusCode], [[operation.response URL] absoluteString], operation.responseString);
+                DDLogCVerbose(@"%ld '%@': %@", (long)[operation.response statusCode], [[operation.response URL] absoluteString], operation.responseString);
                 break;
             case AFLoggerLevelInfo:
-                NSLog(@"%ld '%@'", (long)[operation.response statusCode], [[operation.response URL] absoluteString]);
+                DDLogInfo(@"%ld '%@'", (long)[operation.response statusCode], [[operation.response URL] absoluteString]);
                 break;
             default:
                 break;
