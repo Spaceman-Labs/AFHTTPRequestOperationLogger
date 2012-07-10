@@ -81,7 +81,7 @@ static int httpLogLevel = LOG_LEVEL_INFO;
 		body = [NSString stringWithUTF8String:[[operation.request HTTPBody] bytes]];
 	}
 	
-	HTTPLogInfo(@"%@ '%@'", [operation.request HTTPMethod], [[operation.request URL] absoluteString]);
+	HTTPLogInfo(@"%@ (%p) '%@'", [operation.request HTTPMethod], operation.request, [[operation.request URL] absoluteString]);
 	HTTPLogVerbose(@"\tHeader Fields: %@\n\tBody: %@", [operation.request allHTTPHeaderFields], body);
 }
 
@@ -93,9 +93,9 @@ static int httpLogLevel = LOG_LEVEL_INFO;
     }
 
     if (operation.error) {
-		HTTPLogError(@"Response: %@ '%@' (%ld): %@", [operation.request HTTPMethod], [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
+		HTTPLogError(@"%@ (%p) '%@' (%ld): %@", [operation.request HTTPMethod], operation.request, [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
     } else {
-		HTTPLogInfo(@"%ld '%@'", (long)[operation.response statusCode], [[operation.response URL] absoluteString]);
+		HTTPLogInfo(@"%ld (%p) '%@'", (long)[operation.response statusCode], operation.request, [[operation.response URL] absoluteString]);
 		HTTPLogVerbose(@"\tResponse: %@", operation.responseString);
     }
 }
