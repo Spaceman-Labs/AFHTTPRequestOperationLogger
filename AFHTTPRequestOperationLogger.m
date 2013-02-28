@@ -22,11 +22,16 @@
 
 #import "AFHTTPRequestOperationLogger.h"
 #import "AFHTTPRequestOperation.h"
+#import "AFURLConnectionOperation+Spaceman.h"
 #import "DDLog.h"
 
 #if ! __has_feature(objc_arc)
 #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
 #endif
+
+@interface AFHTTPRequestOperationLogger ()
+@property (nonatomic, strong) NSDictionary *requestDurations;
+@end
 
 @implementation AFHTTPRequestOperationLogger
 @synthesize level = _level;
@@ -49,6 +54,7 @@
     }
 
     self.level = AFLoggerLevelInfo;
+	self.requestDurations = [NSMutableDictionary new];
 
     return self;
 }
@@ -68,44 +74,56 @@
 
 #pragma mark - NSNotification
 
-- (void)HTTPOperationDidStart:(NSNotification *)notification {
-  AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
-
+- (void)HTTPOperationDidStart:(NSNotification *)notification
+{
+	CFAbsoluteTime time = CFAbsoluteTimeGetCurrent();
+	AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
+	
     if (![operation isKindOfClass:[AFHTTPRequestOperation class]]) {
         return;
     }
-
-  NSString *body = nil;
-  if ([operation.request HTTPBody]) {
-    body = [NSString stringWithUTF8String:[[operation.request HTTPBody] bytes]];
-  }
-
-  switch (self.level) {
-    case AFLoggerLevelDebug:
-      DDLogVerbose(@"%@ '%@': %@ %@", [operation.request HTTPMethod], [[operation.request URL] absoluteString], [operation.request allHTTPHeaderFields], body);
-      break;
-    case AFLoggerLevelInfo:
-      DDLogInfo(@"%@ '%@'", [operation.request HTTPMethod], [[operation.request URL] absoluteString]);
-      break;
+	
+	_requestDurations[operation.UUID] = @(time);
+	
+	NSString *body = nil;
+	if ([operation.request HTTPBody]) {
+		body = [NSString stringWithUTF8String:[[operation.request HTTPBody] bytes]];
+	}
+	
+	switch (self.level) {
+		case AFLoggerLevelDebug:
+			DDLogVerbose(@"%@ '%@': %@ %@", [operation.request HTTPMethod], [[operation.request URL] absoluteString], [operation.request allHTTPHeaderFields], body);
+			break;
+		case AFLoggerLevelInfo:
+			DDLogInfo(@"Request Sent\n\tMethod: %@\n\tURL: '%@'\n\tUUID: %@\n", [operation.request HTTPMethod], [[operation.request URL] absoluteString], operation.UUID);
+			break;
         default:
             break;
-  }
+	}
 }
 
-- (void)HTTPOperationDidFinish:(NSNotification *)notification {
-  AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
+- (void)HTTPOperationDidFinish:(NSNotification *)notification
+{
+	CFAbsoluteTime time = CFAbsoluteTimeGetCurrent();
+	CFAbsoluteTime duration = NAN;
+	AFHTTPRequestOperation *operation = (AFHTTPRequestOperation *)[notification object];
 
     if (![operation isKindOfClass:[AFHTTPRequestOperation class]]) {
         return;
     }
-
+	
+	NSNumber *startTime = _requestDurations[operation.UUID];
+	if (startTime) {
+		duration = time - ([startTime doubleValue]);
+	}
+	
     if (operation.error) {
         switch (self.level) {
             case AFLoggerLevelDebug:
             case AFLoggerLevelInfo:
             case AFLoggerLevelWarn:
             case AFLoggerLevelError:
-                DDLogError(@"%@ '%@' (%ld): %@", [operation.request HTTPMethod], [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
+                DDLogError(@"Response Received **ERROR**\n\t%@ '%@' (%ld): %@", [operation.request HTTPMethod], [[operation.response URL] absoluteString], (long)[operation.response statusCode], operation.error);
             default:
                 break;
         }
@@ -115,7 +133,7 @@
                 DDLogCVerbose(@"%ld '%@': %@", (long)[operation.response statusCode], [[operation.response URL] absoluteString], operation.responseString);
                 break;
             case AFLoggerLevelInfo:
-                DDLogInfo(@"%ld '%@'", (long)[operation.response statusCode], [[operation.response URL] absoluteString]);
+                DDLogInfo(@"Response Received\n\tDuration: %fs\n\tResponse Code: %ld\n\tURL: '%@'\n\tUUID: %@\n", duration, (long)[operation.response statusCode], [[operation.response URL] absoluteString], operation.UUID);
                 break;
             default:
                 break;
